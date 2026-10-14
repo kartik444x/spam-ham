@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMS Spam Detector</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-icon">🛡️</span>
+    <span>SpamShield <span class="nav-tag">ML</span></span>
+  </div>
+  <div class="nav-links">
+    <a href="#detector">Detector</a>
+    <a href="#batch">Batch</a>
+    <a href="#about">About</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<header class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">Powered by NLP + Machine Learning</div>
+    <h1 class="hero-title">SMS <span class="gradient-text">Spam</span> Detector</h1>
+    <p class="hero-sub">
+      Enter any message and our Logistic Regression model will instantly classify it
+      as <strong>ham</strong> (legitimate) or <strong>spam</strong> — with confidence score.
+    </p>
+    <div class="hero-stats">
+      <div class="stat-chip">📊 5,572 training messages</div>
+      <div class="stat-chip">🎯 98%+ accuracy</div>
+      <div class="stat-chip">⚡ Real-time prediction</div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="phone-mock">
+      <div class="phone-screen">
+        <div class="sms sms-spam animate-pop">
+          🚨 WIN a FREE iPhone! Click NOW → bit.ly/fake
+        </div>
+        <div class="sms-badge spam-badge">SPAM</div>
+        <div class="sms sms-ham animate-pop" style="animation-delay:.3s">
+          Hey, are we still on for coffee at 3?
+        </div>
+        <div class="sms-badge ham-badge">HAM</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── SINGLE PREDICTOR ── -->
+<section id="detector" class="section">
+  <div class="container">
+    <h2 class="section-title">🔍 Single Message Analysis</h2>
+    <p class="section-sub">Paste or type any SMS message below</p>
+
+    {% if not model_ready %}
+    <div class="alert alert-warn">
+      ⚠️ Model not found. Run <code>python train.py</code> in your terminal first, then refresh.
+    </div>
+    {% endif %}
+
+    <div class="card detector-card">
+      <div class="textarea-wrap">
+        <textarea id="msgInput"
+                  placeholder="e.g.  Congratulations! You've won a $1,000 gift card. Call 0800-SPAM now!"
+                  rows="4"
+                  {% if not model_ready %}disabled{% endif %}></textarea>
+        <div class="char-count" id="charCount">0 / 500</div>
+      </div>
+
+      <div class="btn-row">
+        <button id="predictBtn" class="btn btn-primary" {% if not model_ready %}disabled{% endif %}>
+          <span class="btn-icon">⚡</span> Analyse Message
+        </button>
+        <button id="clearBtn" class="btn btn-ghost">Clear</button>
+      </div>
+
+      <!-- Sample Messages -->
+      <div class="samples">
+        <span class="samples-label">Try a sample:</span>
+        <button class="sample-chip" data-msg="Congratulations! You've won a free luxury cruise. Call 0800-FREE now!">Spam sample</button>
+        <button class="sample-chip" data-msg="Hey, are we still meeting for coffee tomorrow at 10?">Ham sample</button>
+        <button class="sample-chip" data-msg="URGENT: Your account will be suspended. Verify immediately at bit.ly/secure">Phishing</button>
+      </div>
+
+      <!-- Result -->
+      <div id="result" class="result-box hidden">
+        <div class="result-header">
+          <div class="result-icon" id="resultIcon"></div>
+          <div>
+            <div class="result-label" id="resultLabel"></div>
+            <div class="result-sub" id="resultSub"></div>
+          </div>
+        </div>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-label">Confidence</div>
+          <div class="confidence-bar">
+            <div class="confidence-fill" id="confFill"></div>
+          </div>
+          <div class="confidence-pct" id="confPct"></div>
+        </div>
+        <details class="processed-details">
+          <summary>View processed tokens</summary>
+          <p class="processed-text" id="processedText"></p>
+        </details>
+      </div>
+
+      <div id="errorBox" class="alert alert-error hidden"></div>
+      <div id="loadingBox" class="loading hidden">
+        <div class="spinner"></div> Analysing …
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BATCH ── -->
+<section id="batch" class="section section-alt">
+  <div class="container">
+    <h2 class="section-title">📋 Batch Analysis</h2>
+    <p class="section-sub">Enter multiple messages (one per line) to classify them all at once</p>
+
+    <div class="card">
+      <textarea id="batchInput"
+                placeholder="Message one&#10;Message two&#10;Message three …"
+                rows="6"
+                {% if not model_ready %}disabled{% endif %}></textarea>
+
+      <div class="btn-row">
+        <button id="batchBtn" class="btn btn-primary" {% if not model_ready %}disabled{% endif %}>
+          <span class="btn-icon">📊</span> Run Batch Analysis
+        </button>
+      </div>
+
+      <div id="batchResults" class="batch-results hidden"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ABOUT / HOW IT WORKS ── -->
+<section id="about" class="section">
+  <div class="container">
+    <h2 class="section-title">⚙️ How It Works</h2>
+    <p class="section-sub">A complete NLP + ML pipeline built from scratch</p>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-icon">📥</div>
+        <h3>Data</h3>
+        <p>UCI SMS Spam Collection — 5,572 labeled messages (87% ham, 13% spam)</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">🧹</div>
+        <h3>Preprocessing</h3>
+        <p>Lowercase → Tokenise → Remove stop-words & punctuation → Porter Stemmer</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">🔢</div>
+        <h3>TF-IDF</h3>
+        <p>3,000-feature TF-IDF vectoriser with 1&2-gram range captures context</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">🤖</div>
+        <h3>Model</h3>
+        <p>Logistic Regression — outperforms Naïve Bayes on precision & F1</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">✅</div>
+        <h3>Result</h3>
+        <p>Ham / Spam classification with probability confidence score</p>
+      </div>
+    </div>
+
+    <!-- Model comparison table -->
+    <div class="card table-card">
+      <h3>Model Comparison</h3>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>n-gram</th>
+            <th>Preprocessing</th>
+            <th>Accuracy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Naïve Bayes</td>
+            <td>Unigram</td>
+            <td>Stemming</td>
+            <td>~97.2%</td>
+          </tr>
+          <tr>
+            <td>Naïve Bayes</td>
+            <td>Bigram</td>
+            <td>Stemming</td>
+            <td>~97.8%</td>
+          </tr>
+          <tr>
+            <td>Naïve Bayes</td>
+            <td>Bigram</td>
+            <td>Lemmatization</td>
+            <td>~97.9%</td>
+          </tr>
+          <tr class="best-row">
+            <td>⭐ Logistic Regression</td>
+            <td>Bigram</td>
+            <td>Stemming</td>
+            <td>~98.5%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer">
+  <p>Built with Python · scikit-learn · NLTK · Flask</p>
+  <p class="footer-sub">SMS Spam Detector — Resume Project</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
